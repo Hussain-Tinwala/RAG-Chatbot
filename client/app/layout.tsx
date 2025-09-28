@@ -5,6 +5,7 @@ import "./globals.css";
 import {
   ClerkProvider,
   SignInButton,
+  SignUp,
   SignUpButton,
   SignedIn,
   SignedOut,
@@ -37,12 +38,14 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <SignedOut>
-            <SignInButton></SignInButton>
-          </SignedOut>
+          <section className="min-h-screen w-screen flex justify-center items-center">
+            <SignedOut>
+              <SignUp />
+            </SignedOut>
           <SignedIn>
             {children}
           </SignedIn>
+          </section>
         </body>
       </html>
     </ClerkProvider>
