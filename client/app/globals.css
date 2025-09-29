@@ -1,26 +1,30 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes gradient-move {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  body {
+    @apply text-slate-100;
+    background-color: #0d0a1a; /* Fallback color */
+    background-image: 
+      radial-gradient(at 27% 37%, hsla(215, 98%, 62%, 0.1) 0px, transparent 50%), 
+      radial-gradient(at 97% 21%, hsla(125, 98%, 72%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 82% 99%, hsla(340, 98%, 62%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 21% 94%, hsla(343, 98%, 62%, 0.1) 0px, transparent 50%),
+      radial-gradient(at 23% 23%, hsla(285, 98%, 62%, 0.1) 0px, transparent 50%);
+    background-size: 200% 200%;
+    animation: gradient-move 15s ease infinite;
+  }
 }

@@ -1,64 +1,102 @@
 'use client'
-
-import { Upload } from 'lucide-react'
+import { Gem, CheckCircle, LoaderCircle } from 'lucide-react'
 import { useDropzone } from 'react-dropzone'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { motion } from 'framer-motion'
+
+type UploadStatus = "idle" | "uploading" | "success" | "error";
 
 const FileUpload = () => {
+  const [uploadStatus, setUploadStatus] = useState<UploadStatus>("idle");
+
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
-    if (!file) {
-      alert("Please upload a file.");
-      return;
-    }
+    if (!file) return;
 
+    setUploadStatus("uploading");
     const formData = new FormData();
     formData.append('pdf', file);
 
     try {
-      console.log('Uploading file...');
-      const response = await fetch('http://localhost:3001/upload/pdf', {
+      await fetch('http://localhost:3001/upload/pdf', {
         method: 'POST',
         body: formData,
       });
-
-      if (!response.ok) {
-        throw new Error('File upload failed.');
-      }
-
-      const data = await response.json();
-      console.log('File upload successful:', data.message);
-      alert('File uploaded successfully! It is now being processed.');
-      
+      setUploadStatus("success");
     } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('An error occurred during file upload.');
+      console.error(error);
+      setUploadStatus("error");
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'application/pdf': ['.pdf'] }, // Only accept PDF files
+    accept: { 'application/pdf': ['.pdf'] },
     multiple: false,
+    disabled: uploadStatus !== 'idle',
   });
 
+  const renderContent = () => {
+    switch (uploadStatus) {
+      case 'uploading':
+        return (
+          <div className="flex flex-col items-center text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            >
+              <LoaderCircle className="h-16 w-16 text-gold" />
+            </motion.div>
+            <p className="mt-4 text-sm text-slate-300">The bot is absorbing knowledge...</p>
+          </div>
+        );
+      case 'success':
+        return (
+          <div className="flex flex-col items-center text-center">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
+              <CheckCircle className="h-16 w-16 text-green-400" />
+            </motion.div>
+            <p className="mt-4 text-sm font-semibold text-slate-100">Knowledge Absorbed</p>
+            <p className="text-xs text-slate-400 mt-1">You may now begin the seance.</p>
+          </div>
+        );
+      case 'error':
+        // A button to reset would be a good addition here
+        return <p className="text-sm text-red-500">An error occurred. Please refresh.</p>;
+      case 'idle':
+      default:
+        return (
+          <div className="flex flex-col items-center text-center">
+            <motion.div
+              animate={{ rotate: 360, scale: isDragActive ? 1.2 : 1 }}
+              transition={{ 
+                rotate: { duration: 30, repeat: Infinity, ease: "linear" },
+                scale: { type: 'spring', stiffness: 300, damping: 10 }
+              }}
+              className={`transition-shadow duration-300 ${isDragActive ? 'shadow-2xl shadow-gold/50' : ''}`}
+            >
+              <Gem className="h-16 w-16 text-gold" />
+            </motion.div>
+            <p className="mt-4 text-sm text-slate-300">
+              {isDragActive ? "The bot is ready..." : "Offer a document to the bot."}
+            </p>
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="p-2 bg-white rounded-xl">
-      <div 
-        {...getRootProps()} 
-        className={`border-dashed border-2 rounded-xl cursor-pointer bg-gray-50 py-8 flex justify-center items-center flex-col
-                    ${isDragActive ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}
-      >
-        <input {...getInputProps()} />
-        <Upload className="h-10 w-10 text-blue-500" />
-        {isDragActive ? (
-          <p className="mt-2 text-sm text-slate-600">Drop the PDF to upload!</p>
-        ) : (
-          <p className="mt-2 text-sm text-slate-400">Drag 'n' drop a PDF here, or click to select</p>
-        )}
-      </div>
+    <div
+      {...getRootProps()}
+      className={`border-dashed border-2 rounded-xl w-full h-full flex justify-center items-center flex-col
+                  transition-all duration-300
+                  ${uploadStatus !== 'idle' ? 'cursor-default border-gold/30' : 'cursor-pointer border-gold/20 hover:border-gold/50'}
+                  ${isDragActive ? 'border-gold/80 bg-gold/10' : ''}`}
+    >
+      <input {...getInputProps()} />
+      {renderContent()}
     </div>
-  )
-}
+  );
+};
 
 export default FileUpload

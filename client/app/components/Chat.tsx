@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, FormEvent, ChangeEvent } from 'react';
-import { Send } from 'lucide-react';
+import { useState, FormEvent, ChangeEvent, useRef, useEffect } from 'react';
+import { Send, Bot } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-// Define a type for our message object
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -14,6 +14,11 @@ export function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -21,17 +26,13 @@ export function Chat() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: input,
-    };
-
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
-    setInput('');
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
+    
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    setInput('');
 
     try {
       const response = await fetch('http://localhost:3001/chat', {
@@ -40,82 +41,101 @@ export function Chat() {
         body: JSON.stringify({ messages: [...messages, userMessage] }),
       });
 
-      if (!response.body) {
-        throw new Error('Response body is empty.');
-      }
+      if (!response.body) throw new Error('Response body is empty.');
       
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let assistantResponse = '';
-
       const assistantMessageId = (Date.now() + 1).toString();
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: assistantMessageId, role: 'assistant', content: '...' },
-      ]);
+
+      setIsLoading(false);
+      setMessages((prev) => [...prev, { id: assistantMessageId, role: 'assistant', content: '' }]);
       
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         
-        const chunk = decoder.decode(value);
-        assistantResponse += chunk;
-
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, content: assistantResponse }
-              : msg
+        assistantResponse += decoder.decode(value);
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId ? { ...msg, content: assistantResponse } : msg
           )
         );
       }
     } catch (error) {
       console.error('Error fetching chat response:', error);
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { id: 'error', role: 'assistant', content: 'Sorry, something went wrong.' },
-      ]);
+      setMessages((prev) => [...prev, { id: 'error', role: 'assistant', content: 'The Oracle is silent... An error occurred.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full max-h-screen">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full">
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.map((m) => (
-          <div
+          <motion.div
             key={m.id}
-            className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex items-start gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
           >
+            {m.role === 'assistant' && (
+              <div className="w-8 h-8 flex-shrink-0 rounded-full bg-black/30 border border-gold/50 flex items-center justify-center">
+                <Bot className="h-5 w-5 text-gold" />
+              </div>
+            )}
             <div
-              className={`max-w-lg px-4 py-2 rounded-lg shadow ${
+              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap shadow-lg shadow-black/30 ${
                 m.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-900 whitespace-pre-wrap'
+                  ? 'bg-gold/20 text-slate-100 rounded-br-none border border-gold/30'
+                  : 'bg-black/30 text-slate-300 rounded-bl-none border border-slate-400/20'
               }`}
             >
               {m.content}
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
-      <div className="p-4 border-t">
-        <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-          <input
-            className="flex-1 p-2 border rounded-lg"
-            value={input}
-            placeholder="Ask a question about your PDF..."
-            onChange={handleInputChange}
-            disabled={isLoading}
-          />
-          <button
-            type="submit"
-            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            disabled={!input || isLoading}
+        
+        {isLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-4"
           >
-            <Send className="h-5 w-5" />
-          </button>
+            <div className="w-8 h-8 flex-shrink-0 rounded-full bg-black/30 border border-gold/50 flex items-center justify-center">
+              <Bot className="h-5 w-5 text-gold animate-pulse" />
+            </div>
+            <div className="max-w-lg px-4 py-3 rounded-xl bg-black/30 border border-slate-400/20 w-full">
+              <div className="space-y-2">
+                <div className="h-3 w-48 bg-slate-600/50 rounded-full animate-pulse"></div>
+                <div className="h-3 w-64 bg-slate-600/50 rounded-full animate-pulse [animation-delay:0.2s]"></div>
+                <div className="h-3 w-56 bg-slate-600/50 rounded-full animate-pulse [animation-delay:0.4s]"></div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-4 border-t border-gold/20">
+        <form onSubmit={handleSubmit} className="flex items-center gap-3">
+          <input
+            className="flex-1 p-3 bg-black/30 border border-slate-400/30 rounded-lg text-slate-100 placeholder:text-slate-500
+                       focus:ring-2 focus:ring-gold focus:outline-none transition-shadow"
+            value={input}
+            placeholder="Consult the Bot..."
+            onChange={handleInputChange}
+          />
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            className="p-3 w-12 h-12 bg-gold text-background rounded-lg hover:bg-gold/80 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+            disabled={isLoading}
+          >
+            <Send className="h-6 w-6" />
+          </motion.button>
         </form>
       </div>
     </div>
