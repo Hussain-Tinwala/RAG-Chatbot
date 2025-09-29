@@ -7,7 +7,8 @@ import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { QdrantVectorStore } from "@langchain/qdrant";
 
-import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+// import { HuggingFaceInferenceEmbeddings } from "@langchain/community/embeddings/hf";
+import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 
 const connection = { host: '127.0.0.1', port: 6379 };
 
@@ -32,12 +33,13 @@ const worker = new Worker('pdf-processing', async job => {
         const chunks = await splitter.splitDocuments(docs);
         console.log(`Split document into ${chunks.length} chunks.`);
 
-        // 3. Create vector embeddings for each chunk
-        const embeddings = new HuggingFaceInferenceEmbeddings({
-            apiKey: process.env.HUGGINGFACE_API_KEY,
-            model: 'sentence-transformers/all-MiniLM-L6-v2',
+        // 3. Create vector embeddings for each chunk        
+        const embeddings = new GoogleGenerativeAIEmbeddings({
+            apiKey: process.env.GEMINI_API_KEY,
+            model: "text-embedding-004",
         });
-        console.log('Embedding chunks via HugginFace...');
+        console.log('Embedding chunks via Google Gemini...');
+
 
         // 4. Store the embeddings in our Quadrant vector database
         await QdrantVectorStore.fromDocuments(chunks, embeddings, {
