@@ -7,7 +7,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "start:worker": "node worker.js"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -15,8 +16,17 @@
     "@types/node": "^24.5.2"
   },
   "dependencies": {
+    "@huggingface/inference": "^4.9.0",
+    "@langchain/community": "^0.3.56",
+    "@langchain/groq": "^0.2.4",
+    "@langchain/ollama": "^0.2.4",
+    "@langchain/qdrant": "^0.1.3",
+    "bullmq": "^5.58.9",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
-    "multer": "^2.0.2"
+    "langchain": "^0.3.34",
+    "multer": "^2.0.2",
+    "pdf-parse": "^1.1.1"
   }
 }
