@@ -28,3 +28,24 @@
     animation: gradient-move 15s ease infinite;
   }
 }
+
+/* Custom Scrollbar for Webkit Browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* The track (the background of the scrollbar) */
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* The handle itself - we use the hex code for gold here */
+::-webkit-scrollbar-thumb {
+  background: #a58f0e50; /* #FFD700 is gold, 50 is the opacity */
+  border-radius: 9999px;
+}
+
+/* The handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #FFD70080; /* #FFD700 is gold, 80 is a higher opacity */
+}

@@ -8,6 +8,7 @@ interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  sources?: any[];
 }
 
 export function Chat() {
@@ -29,7 +30,6 @@ export function Chat() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = { id: Date.now().toString(), role: 'user', content: input };
-    
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setInput('');
@@ -41,27 +41,21 @@ export function Chat() {
         body: JSON.stringify({ messages: [...messages, userMessage] }),
       });
 
-      if (!response.body) throw new Error('Response body is empty.');
-      
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let assistantResponse = '';
-      const assistantMessageId = (Date.now() + 1).toString();
-
-      setIsLoading(false);
-      setMessages((prev) => [...prev, { id: assistantMessageId, role: 'assistant', content: '' }]);
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        assistantResponse += decoder.decode(value);
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId ? { ...msg, content: assistantResponse } : msg
-          )
-        );
+      if (!response.ok) {
+        throw new Error('Failed to get a response from the server.');
       }
+      
+      const data = await response.json();
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.answer,
+        sources: data.sources,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
     } catch (error) {
       console.error('Error fetching chat response:', error);
       setMessages((prev) => [...prev, { id: 'error', role: 'assistant', content: 'The Oracle is silent... An error occurred.' }]);
@@ -72,28 +66,47 @@ export function Chat() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {messages.map((m) => (
           <motion.div
             key={m.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`flex items-start gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}
+            className={`flex flex-col items-start gap-3 ${m.role === 'user' ? 'items-end' : ''}`}
           >
-            {m.role === 'assistant' && (
-              <div className="w-8 h-8 flex-shrink-0 rounded-full bg-black/30 border border-gold/50 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-gold" />
+            <div className={`flex items-start gap-4 ${m.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              {m.role === 'assistant' && (
+                <div className="w-8 h-8 flex-shrink-0 rounded-full bg-black/30 border border-gold/50 flex items-center justify-center">
+                  <Bot className="h-5 w-5 text-gold" />
+                </div>
+              )}
+              <div
+                className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap shadow-lg shadow-black/30 ${
+                  m.role === 'user'
+                    ? 'bg-gold/20 text-slate-100 rounded-br-none border border-gold/30'
+                    : 'bg-black/30 text-slate-300 rounded-bl-none border border-slate-400/20'
+                }`}
+              >
+                {m.content}
+              </div>
+            </div>
+
+            {/* Source Citation Display */}
+            {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+              <div className={`flex flex-wrap gap-2 self-start ${m.role === 'user' ? 'self-end' : 'ml-12'}`}>
+                <p className="text-xs text-slate-400 w-full mb-1">Sources:</p>
+                {m.sources.map((source, index) => (
+                  <div key={index} className="bg-black/30 border border-slate-600 rounded-lg p-2 text-xs text-slate-400 max-w-xs transition-all hover:border-gold/50 cursor-pointer">
+                    <p className="font-semibold text-gold mb-1">
+                      Page {source.metadata.loc?.pageNumber || 'N/A'}
+                    </p>
+                    <p className="truncate">
+                      {source.pageContent}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
-            <div
-              className={`max-w-xl px-4 py-3 rounded-xl whitespace-pre-wrap shadow-lg shadow-black/30 ${
-                m.role === 'user'
-                  ? 'bg-gold/20 text-slate-100 rounded-br-none border border-gold/30'
-                  : 'bg-black/30 text-slate-300 rounded-bl-none border border-slate-400/20'
-              }`}
-            >
-              {m.content}
-            </div>
           </motion.div>
         ))}
         
@@ -124,15 +137,16 @@ export function Chat() {
             className="flex-1 p-3 bg-black/30 border border-slate-400/30 rounded-lg text-slate-100 placeholder:text-slate-500
                        focus:ring-2 focus:ring-gold focus:outline-none transition-shadow"
             value={input}
-            placeholder="Consult the Bot..."
+            placeholder="Consult the Oracle..."
             onChange={handleInputChange}
+            disabled={isLoading}
           />
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
             className="p-3 w-12 h-12 bg-gold text-background rounded-lg hover:bg-gold/80 disabled:bg-slate-600 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-            disabled={isLoading}
+            disabled={!input || isLoading}
           >
             <Send className="h-6 w-6" />
           </motion.button>

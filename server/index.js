@@ -93,11 +93,17 @@ Question: {question}`;
   const prompt = PromptTemplate.fromTemplate(template);
 
   // 3. Create the LangChain Chain
-  const chain = RunnableSequence.from([
-    {
-      context: (input) => retriever.invoke(input.question).then(formatDocumentsAsString),
-      question: (input) => input.question,
-    },
+  // const chain = RunnableSequence.from([
+  //   {
+  //     context: (input) => retriever.invoke(input.question).then(formatDocumentsAsString),
+  //     question: (input) => input.question,
+  //   },
+  //   prompt,
+  //   model,
+  //   new StringOutputParser(),
+  // ]);
+
+  const generationChain = RunnableSequence.from([
     prompt,
     model,
     new StringOutputParser(),
@@ -107,6 +113,34 @@ Question: {question}`;
 
 
   //CHAT ENDPOINT
+  // app.post('/chat', async (req, res) => {
+  //   const { messages } = req.body;
+  //   if (!messages || !messages.length) {
+  //     return res.status(400).json({ error: "Messages are required." });
+  //   }
+
+  //   const lastUserMessage = messages[messages.length - 1];
+  //   const question = lastUserMessage.content;
+
+  //   if (!question) {
+  //     return res.status(400).json({ error: "Question is required." });
+  //   }
+
+  //   try {
+  //     const stream = await chain.stream({ question });
+
+  //     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  //     for await (const chunk of stream) {
+  //       res.write(chunk);
+  //     }
+  //     res.end();
+  //   } catch (error) {
+  //     console.error("Error during chat processing:", error);
+  //     res.status(500).json({ error: "An error occurred during chat processing." });
+  //   }
+  // });
+
+
   app.post('/chat', async (req, res) => {
     const { messages } = req.body;
     if (!messages || !messages.length) {
@@ -115,25 +149,27 @@ Question: {question}`;
 
     const lastUserMessage = messages[messages.length - 1];
     const question = lastUserMessage.content;
-
     if (!question) {
-      return res.status(400).json({ error: "Question is required." });
+      return res.status(400).json({ error: "No question found." });
     }
 
     try {
-      const stream = await chain.stream({ question });
+      const relevantDocs = await retriever.invoke(question);
 
-      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-      for await (const chunk of stream) {
-        res.write(chunk);
-      }
-      res.end();
+      const context = formatDocumentsAsString(relevantDocs);
+
+      const answer = await generationChain.invoke({ context, question });
+
+      res.status(200).json({
+        answer: answer,
+        sources: relevantDocs,
+      });
+
     } catch (error) {
       console.error("Error during chat processing:", error);
       res.status(500).json({ error: "An error occurred during chat processing." });
     }
   });
-
 
   const PORT = 3001
   app.listen(PORT, () => {
